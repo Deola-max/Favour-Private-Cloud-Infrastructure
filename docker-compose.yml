@@ -1,0 +1,40 @@
+services:
+  # THE VAULT (Database)
+  db:
+    image: mariadb:10.6
+    container_name: favour-cloud-db
+    restart: always
+    volumes:
+      - ./db_data:/var/lib/mysql        # Your data stays here!
+    networks:
+      - cloud_private                   # Hidden from the internet
+    environment:
+      - MYSQL_ROOT_PASSWORD=favour_root # Your "Master" password
+      - MYSQL_PASSWORD=favour_user      # Your "User" password
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    healthcheck:                        # The "Doctor" probe
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # THE FRONT DOOR (The Cloud App)
+  app:
+    image: nextcloud:latest
+    container_name: favour-cloud-app
+    restart: always
+    ports:
+      - "8081:80"                       # Open on port 8081
+    volumes:
+      - ./cloud_data:/var/www/html      # Your uploaded photos go here!
+    networks:
+      - cloud_private
+      - cloud_public                    # This one talks to the internet
+    depends_on:
+      db:
+        condition: service_healthy      # WAIT for the Doctor to say it's OK!
+
+networks:
+  cloud_public:
+  cloud_private:
